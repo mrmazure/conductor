@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="fr">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Conductor - RadioTools.be</title>
+    <link rel="icon" href="rt_logo_head.png" type="image/png">
+    <!-- Google Fonts: Inter -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <!-- SheetJS for Excel Export -->
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+    <link rel="stylesheet" href="style.css">
+    <!-- PeerJS for Real-time Collaboration -->
+    <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
+</head>
+
+<body>
+
+    <!-- Header -->
+    <header>
+        <div class="logo">
+            <img src="rt_logo_head.png" alt="Logo" style="height: 32px; margin-right: 10px;">
+            <span style="font-weight: 800; font-size: 1.2rem; color: #fff;">RadioTools</span>
+        </div>
+        <h1>| Conductor By MrMazure</h1>
+
+        <!-- Connection Status -->
+        <div id="connection-status" class="connection-status" title="Statut de la connexion">
+            <span class="status-dot"></span>
+            <span class="peer-count">0</span>
+        </div>
+
+        <div class="header-stats">
+            <div class="stat-item">
+                <span class="stat-label">Fin prévisionnelle</span>
+                <span class="stat-value" id="endTimeDisplay">--:--</span>
+            </div>
+            <div class="stat-item">
+                <span class="stat-label">Durée totale</span>
+                <span class="stat-value" id="totalDurationDisplay">00:00</span>
+            </div>
+        </div>
+    </header>
+
+    <!-- Top Controls -->
+    <div class="top-bar">
+        <div class="show-inputs">
+            <div class="input-group">
+                <label for="showName">Nom de l'émission</label>
+                <input type="text" id="showName" placeholder="Titre de l'émission">
+            </div>
+            <div class="input-group">
+                <label for="startTime">Heure de début</label>
+                <input type="time" id="startTime" value="07:00">
+            </div>
+        </div>
+        <div class="controls">
+            <!-- Clear Actions -->
+            <button class="btn btn-secondary" id="btnClearDescriptions"
+                title="Vider uniquement le texte des descriptions">
+                🧹 Vider Desc.
+            </button>
+            <button class="btn btn-danger" id="btnClear" title="Tout effacer">
+                🗑️ Tout effacer
+            </button>
+
+            <div class="separator" style="width: 1px; height: 24px; background: #3f3f46; margin: 0 4px;"></div>
+
+            <!-- Individual Action Buttons -->
+            <button class="btn btn-secondary" id="btnSaveJson" title="Sauvegarder (.json)">
+                💾 Sauver
+            </button>
+            <button class="btn btn-secondary" id="btnLoadJson" title="Ouvrir (.json)">
+                📂 Ouvrir
+            </button>
+            <button class="btn btn-secondary" id="btnExportExcel" title="Exporter Excel">
+                📊 Export Excel
+            </button>
+            <button class="btn btn-primary" id="btnPrint" title="Imprimer / PDF">
+                🖨️ Imprimer
+            </button>
+
+            <div class="separator" style="width: 1px; height: 24px; background: #3f3f46; margin: 0 4px;"></div>
+
+            <button class="btn btn-primary" id="btnShare" title="Collaboration en direct">
+                🤝 Partager/éditer en live
+            </button>
+
+            <!-- Hidden Input for loading JSON -->
+            <input type="file" id="fileInputJson" accept=".json" hidden>
+        </div>
+    </div>
+
+    <!-- Main Workspace -->
+    <div class="main-layout">
+
+        <!-- Sidebar Palette -->
+        <aside id="palette">
+            <div class="palette-header">
+                <h3>Blocs</h3>
+                <button class="btn-icon" id="btnAddType" title="Gérer les types">➕</button>
+            </div>
+            <div class="palette-content">
+                <!-- Injected via JS -->
+            </div>
+        </aside>
+
+        <!-- Conductor List -->
+        <div id="conductor-wrapper">
+            <div id="conductor" class="empty">
+                <!-- Blocks go here -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Type Manager Modal -->
+    <div id="typeModal" class="modal hidden">
+        <div class="modal-content">
+            <h2>Gérer le Type</h2>
+            <div class="form-group">
+                <label>Nom du bloc</label>
+                <input type="text" id="newTypeName" placeholder="Ex: Interview">
+            </div>
+            <div class="form-group">
+                <label>Couleur</label>
+                <input type="color" id="newTypeColor" value="#3b82f6">
+            </div>
+            <div class="form-group">
+                <label>Durée par défaut (mm:ss)</label>
+                <input type="text" id="newTypeDuration" value="01:00" placeholder="01:00">
+            </div>
+
+            <div class="modal-actions">
+                <button id="typeDelete" class="btn btn-danger hidden">Supprimer</button>
+                <span class="spacer"></span>
+                <button id="typeCancel" class="btn btn-text">Annuler</button>
+                <button id="typeConfirm" class="btn btn-primary">Enregistrer</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="js/script.js"></script>
+</body>
+
+</html>
