@@ -580,8 +580,8 @@ h1 {
   backdrop-filter: blur(2px);
 }
 
-.modal.hidden {
-  display: none;
+.hidden {
+  display: none !important;
 }
 
 /* --- Collaboration Features --- */
@@ -603,7 +603,8 @@ h1 {
   width: 8px;
   height: 8px;
   border-radius: 50%;
-  background-color: var(--danger); /* Offline/Default */
+  background-color: var(--danger);
+  /* Offline/Default */
   transition: background-color 0.3s;
 }
 
@@ -622,9 +623,17 @@ h1 {
 }
 
 @keyframes pulse {
-  0% { opacity: 1; }
-  50% { opacity: 0.5; }
-  100% { opacity: 1; }
+  0% {
+    opacity: 1;
+  }
+
+  50% {
+    opacity: 0.5;
+  }
+
+  100% {
+    opacity: 1;
+  }
 }
 
 .peer-count {
@@ -634,7 +643,8 @@ h1 {
 
 /* Locked Block Styles */
 .block-item.locked {
-  border: 2px solid var(--danger) !important; /* Red border overrides type color */
+  border: 2px solid var(--danger) !important;
+  /* Red border overrides type color */
   position: relative;
   /* Visual feedback */
 }
@@ -648,7 +658,7 @@ h1 {
   z-index: 10;
   background: var(--bg-surface);
   border-radius: 50%;
-  box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
   width: 24px;
   height: 24px;
   display: flex;
@@ -660,14 +670,15 @@ h1 {
 .lock-badge {
   position: absolute;
   top: -10px;
-  right: 20px; /* Left of padlock */
+  right: 20px;
+  /* Left of padlock */
   background: var(--danger);
   color: white;
   font-size: 0.75rem;
   padding: 2px 8px;
   border-radius: 12px;
   font-weight: 600;
-  box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
   white-space: nowrap;
   pointer-events: none;
   z-index: 9;
@@ -679,7 +690,7 @@ h1 {
 .block-item.locked .duration-input {
   pointer-events: none;
   opacity: 0.7;
-  background: rgba(0,0,0,0.1);
+  background: rgba(0, 0, 0, 0.1);
 }
 
 .modal-content {

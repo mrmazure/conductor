@@ -28,9 +28,10 @@
         <h1>| Conductor By MrMazure</h1>
 
         <!-- Connection Status -->
-        <div id="connection-status" class="connection-status" title="Statut de la connexion">
+        <div id="connection-status" class="connection-status hidden" title="Statut de la connexion">
             <span class="status-dot"></span>
-            <span class="peer-count">0</span>
+            <span class="peer-label hidden">Collaborateurs : </span>
+            <span class="peer-count hidden">0</span>
         </div>
 
         <div class="header-stats">
@@ -76,17 +77,17 @@
             <button class="btn btn-secondary" id="btnLoadJson" title="Ouvrir (.json)">
                 📂 Ouvrir
             </button>
-            <button class="btn btn-secondary" id="btnExportExcel" title="Exporter Excel">
-                📊 Export Excel
+            <button class="btn btn-secondary" id="btnExportODS" title="Exporter ODS">
+                📤 Excel
             </button>
             <button class="btn btn-primary" id="btnPrint" title="Imprimer / PDF">
-                🖨️ Imprimer
+                🖨️ Imprimer / PDF
             </button>
 
             <div class="separator" style="width: 1px; height: 24px; background: #3f3f46; margin: 0 4px;"></div>
 
             <button class="btn btn-primary" id="btnShare" title="Collaboration en direct">
-                🤝 Partager/éditer en live
+                🤝 Collaboration live
             </button>
 
             <!-- Hidden Input for loading JSON -->
@@ -101,10 +102,17 @@
         <aside id="palette">
             <div class="palette-header">
                 <h3>Blocs</h3>
-                <button class="btn-icon" id="btnAddType" title="Gérer les types">➕</button>
+                <div style="display: flex; gap: 4px;">
+                    <button class="btn-icon" id="btnResetTypes" title="Réinitialiser les types de bloc">🔄</button>
+                    <button class="btn-icon" id="btnAddType" title="Ajouter un type de bloc">➕</button>
+                </div>
             </div>
             <div class="palette-content">
                 <!-- Injected via JS -->
+            </div>
+            <div class="palette-footer"
+                style="margin-top: auto; padding-top: 10px; font-size: 0.75rem; color: var(--text-muted); line-height: 1.4; border-top: 1px solid var(--border);">
+                💡 <em>Clic droit = éditer les paramètres du bloc</em>
             </div>
         </aside>
 

@@ -4,6 +4,7 @@ const conductor = document.getElementById('conductor');
 const startInp = document.getElementById('startTime');
 const showNameInp = document.getElementById('showName');
 const btnAddType = document.getElementById('btnAddType');
+const btnResetTypes = document.getElementById('btnResetTypes');
 const btnClearDescriptions = document.getElementById('btnClearDescriptions');
 
 // Stats Elements
@@ -22,13 +23,15 @@ const btnDeleteType = document.getElementById('typeDelete');
 
 // State
 let items = [];
-let types = {
+const DEFAULT_TYPES = {
   sequence: { label: 'Séquence', color: '#3b82f6', duration: 60 },
   speak: { label: 'Speak', color: '#f59e0b', duration: 60 },
   pub: { label: 'Publicité', color: '#10b981', duration: 60 },
-  musique: { label: 'Musique', color: '#8b5cf6', duration: 180 }, // Default 3 min
+  musique: { label: 'Musique', color: '#8b5cf6', duration: 180 },
   autre: { label: 'Autre', color: '#ef4444', duration: 60 }
 };
+
+let types = JSON.parse(JSON.stringify(DEFAULT_TYPES));
 
 // --- Network Manager ---
 const Network = {
@@ -67,54 +70,74 @@ const Network = {
   // Locked blocks state: { blockId: { nickname: 'User-1', color: '#...' } }
   locks: {},
 
-  async init() {
-    this.updateStatus('connecting');
-
-    // 1. Get Public IP for Lobby ID
-    let publicIp = '127.0.0.1';
-    try {
-      const res = await fetch('https://api.ipify.org?format=json');
-      const data = await res.json();
-      publicIp = data.ip.replace(/[^0-9]/g, ''); // Sanitize
-    } catch (e) { console.warn('IP Fetch Failed', e); }
-
-    const lobbyId = `rt-conductor-lobby-${publicIp}`;
+  init() {
     const urlParams = new URLSearchParams(window.location.search);
     const roomParam = urlParams.get('room');
 
-    // Determine ID to use
-    // If room param exists, we are a client joining a specific room (or lobby).
-    // If no room param, we TRY to be the host of the Lobby.
-
-    // Logic: 
-    // 1. Try to connect to Lobby as a Client. 
-    // 2. If Lobby doesn't exist (PeerJS error 'peer-unavailable'), we BECOME the Lobby Host.
-
     if (roomParam) {
-      // Direct join
+      // Joining a specific room via shared link
+      this.updateStatus('connecting');
       this.initPeer(null, roomParam);
     } else {
-      // Auto-discovery logic
-      this.initPeer(null, lobbyId, true);
+      // Default URL: collaboration is opt-in, do nothing until user clicks Share
+      this.updateStatus('offline');
     }
   },
 
-  initPeer(id, targetPeerId, isAutoDiscovery = false) {
+  startHosting() {
+    if (this.peer && !this.peer.destroyed) {
+      // Already hosting, just return current ID
+      return Promise.resolve(this.myId);
+    }
+    return new Promise((resolve) => {
+      this.isHost = true;
+      this.updateStatus('connecting');
+      this.peer = new Peer(null, { debug: 1 });
+
+      this.peer.on('open', (id) => {
+        this.myId = id;
+        this.updateStatus('connected');
+        console.log('Hosting with Peer ID:', id);
+
+        this.peer.on('connection', (conn) => {
+          console.log('Incoming connection from:', conn.peer);
+          this.handleConnection(conn);
+        });
+
+        this.peer.on('error', (err) => {
+          console.error('Peer Error:', err.type);
+          this.updateStatus('offline');
+        });
+
+        resolve(id);
+      });
+
+      this.peer.on('error', (err) => {
+        console.error('Peer Error during host init:', err.type);
+        this.updateStatus('offline');
+        resolve(null);
+      });
+    });
+  },
+
+  disconnect() {
+    if (this.peer && !this.peer.destroyed) {
+      this.peer.destroy();
+    }
+    this.peer = null;
+    this.conn = [];
+    this.isHost = false;
+    this.locks = {};
+    this.myId = null;
+    this.updateStatus('offline');
+  },
+
+  initPeer(id, targetPeerId) {
     this.peer = new Peer(id, { debug: 1 });
 
     this.peer.on('open', (id) => {
       this.myId = id;
       console.log('My Peer ID:', id);
-
-      // If we don't have a target to connect to, WE ARE THE HOST
-      if (!targetPeerId) {
-        this.isHost = true;
-        this.updateStatus('connected');
-        console.log('I am the Host');
-        return;
-      }
-
-      // We have a target to connect to
       this.connectToPeer(targetPeerId);
     });
 
@@ -125,15 +148,7 @@ const Network = {
 
     this.peer.on('error', (err) => {
       console.error('Peer Error:', err.type);
-      if (isAutoDiscovery && (err.type === 'peer-unavailable' || err.type === 'invalid-id' || err.type === 'unavailable-id')) {
-        console.log('Lobby unavailable, attempting to become Host...');
-        // Lobby doesn't exist? Try to become the lobby!
-        if (this.peer) this.peer.destroy();
-        // Slight delay to ensure cleanup
-        setTimeout(() => this.initPeer(targetPeerId, null), 500); // Use targetPeerId (the Lobby ID) as MY id
-      } else {
-        this.updateStatus('offline');
-      }
+      this.updateStatus('offline');
     });
   },
 
@@ -174,11 +189,27 @@ const Network = {
     });
 
     conn.on('close', () => {
+      console.log('Connection closed with:', conn.peer);
       this.conn = this.conn.filter(c => c !== conn);
-      this.updateStatus(this.conn.length > 0 ? 'connected' : 'offline');
-      // Potential cleanup of locks held by this peer?
-      // Hard to track peer->locks map without extra logic, but good for robust system.
       this.clearLocksForPeer(conn.peer);
+      // If host has no more peers, stay online (still hosting, ready for new joins).
+      // If client lost its only connection, go offline.
+      if (!this.isHost && this.conn.length === 0) {
+        this.updateStatus('offline');
+      } else {
+        // Host stays 'connected' (still listening), client updates count
+        this.updateStatus('connected');
+      }
+      render();
+    });
+
+    conn.on('error', (err) => {
+      console.warn('Connection error with', conn.peer, err);
+      this.conn = this.conn.filter(c => c !== conn);
+      this.clearLocksForPeer(conn.peer);
+      if (!this.isHost && this.conn.length === 0) {
+        this.updateStatus('offline');
+      }
     });
   },
 
@@ -286,15 +317,27 @@ const Network = {
 
   updateStatus(status) {
     const dot = connectionStatus.querySelector('.status-dot');
+    const label = connectionStatus.querySelector('.peer-label');
     const count = connectionStatus.querySelector('.peer-count');
 
+    // Show/Hide the whole status bar
+    if (status === 'offline') {
+      connectionStatus.classList.add('hidden');
+      return;
+    }
+    connectionStatus.classList.remove('hidden');
     dot.className = 'status-dot ' + status;
-    count.textContent = this.conn.length + 1; // +1 for me
 
-    if (status === 'connected') {
-      connectionStatus.title = `Connecté (IP: ${this.myId})`;
+    // Show/Hide counter only for Host
+    if (this.isHost) {
+      label.classList.remove('hidden');
+      count.classList.remove('hidden');
+      count.textContent = this.conn.length + 1; // +1 for me
+      connectionStatus.title = `Hôte actif — ${this.conn.length} collaborateur(s) connecté(s)`;
     } else {
-      connectionStatus.title = status;
+      label.classList.add('hidden');
+      count.classList.add('hidden');
+      connectionStatus.title = status === 'connecting' ? 'Connexion en cours...' : `Connecté (session: ${this.myId})`;
     }
   },
 
@@ -337,6 +380,9 @@ function setupEventListeners() {
 
   // Modal
   btnAddType.addEventListener('click', () => openModal());
+  if (btnResetTypes) {
+    btnResetTypes.addEventListener('click', resetTypes);
+  }
   palette.addEventListener('contextmenu', handlePaletteContextMenu);
   btnCancel.addEventListener('click', closeModal);
   btnConfirm.addEventListener('click', confirmTypeEdit);
@@ -353,15 +399,25 @@ function setupEventListeners() {
     window.print();
   });
 
-  // Share Button
-  document.getElementById('btnShare').addEventListener('click', () => {
+  // Share Button — lazily starts hosting if not already
+  document.getElementById('btnShare').addEventListener('click', async () => {
+    const hostId = await Network.startHosting();
+    if (!hostId) {
+      alert('Impossible de démarrer la collaboration. Vérifiez votre connexion.');
+      return;
+    }
     const url = new URL(window.location.href);
-    url.searchParams.set('room', Network.myId);
+    url.searchParams.delete('room'); // keep base URL clean for the host
+    url.searchParams.set('room', hostId);
 
-    // Copy to clipboard
     navigator.clipboard.writeText(url.toString()).then(() => {
       alert(`Lien copié !\nPartagez ce lien pour collaborer :\n${url.toString()}`);
     });
+  });
+
+  // Cleanup peer on page close / navigation
+  window.addEventListener('beforeunload', () => {
+    Network.disconnect();
   });
 
   // JSON I/O
@@ -369,10 +425,10 @@ function setupEventListeners() {
   document.getElementById('btnLoadJson').addEventListener('click', () => document.getElementById('fileInputJson').click());
   document.getElementById('fileInputJson').addEventListener('change', loadJson);
 
-  // Excel Export
-  const btnExport = document.getElementById('btnExportExcel');
+  // ODS Export
+  const btnExport = document.getElementById('btnExportODS');
   if (btnExport) {
-    btnExport.addEventListener('click', exportToExcel);
+    btnExport.addEventListener('click', exportToODS);
   }
 
   // Print Events
@@ -547,8 +603,8 @@ function createBlockElement(it, index, startTimeSeconds) {
 
 function updateStats(endTimeSeconds, totalSeconds) {
   endTimeSeconds = endTimeSeconds % 86400;
-  if (endTimeDisplay) endTimeDisplay.textContent = formatTime(endTimeSeconds);
-  if (totalDurationDisplay) totalDurationDisplay.textContent = formatDuration(totalSeconds);
+  if (endTimeDisplay) endTimeDisplay.textContent = formatFullTime(endTimeSeconds);
+  if (totalDurationDisplay) totalDurationDisplay.textContent = formatFullTime(totalSeconds);
 }
 
 function updateTitle() {
@@ -793,6 +849,16 @@ function deleteType() {
   }
 }
 
+function resetTypes() {
+  if (confirm('Réinitialiser tous les types de blocs aux valeurs par défaut ?')) {
+    types = JSON.parse(JSON.stringify(DEFAULT_TYPES));
+    saveTypes();
+    updatePalette();
+    render();
+    Network.send({ type: 'UPDATE_TYPES', types: types });
+  }
+}
+
 // --- JSON I/O ---
 
 function saveState() {
@@ -888,6 +954,13 @@ function formatDuration(seconds) {
   return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
 }
 
+function formatFullTime(seconds) {
+  const h = Math.floor(seconds / 3600);
+  const m = Math.floor((seconds % 3600) / 60);
+  const s = seconds % 60;
+  return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+}
+
 function getDateString() {
   const now = new Date();
   return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
@@ -949,9 +1022,9 @@ function cleanupPrint() {
   document.querySelectorAll('.print-duration').forEach(e => e.remove());
 }
 
-// --- Excel Export ---
+// --- ODS Export ---
 
-function exportToExcel() {
+function exportToODS() {
   if (!items || items.length === 0) {
     alert("Aucune donnée à exporter.");
     return;
@@ -994,7 +1067,7 @@ function exportToExcel() {
   XLSX.utils.book_append_sheet(wb, ws, "Conducteur");
 
   const showName = showNameInp.value.trim() || "Conducteur";
-  const filename = `${showName} - RadioTools.be.xlsx`;
+  const filename = `${showName} - RadioTools.be.ods`;
 
   XLSX.writeFile(wb, filename);
 }
