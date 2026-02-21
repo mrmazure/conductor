@@ -892,3 +892,113 @@ h1 {
 .print-header-only {
   display: none;
 }
+
+/* ============================================
+   Share / Collaborate Modal
+   ============================================ */
+
+.share-modal-content {
+  max-width: 480px;
+  width: 100%;
+}
+
+.share-modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 20px;
+}
+
+.share-modal-header h2 {
+  margin: 0;
+  font-size: 1.1rem;
+  color: var(--text-main);
+}
+
+.share-section {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.share-section-title {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.share-icon {
+  font-size: 1.5rem;
+  line-height: 1;
+  flex-shrink: 0;
+}
+
+.share-section-title strong {
+  display: block;
+  font-size: 1rem;
+  color: var(--text-main);
+  margin-bottom: 2px;
+}
+
+.share-section-title p {
+  margin: 0;
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  line-height: 1.4;
+}
+
+.share-divider {
+  height: 1px;
+  background: var(--border);
+  margin: 20px 0;
+}
+
+/* Link display row */
+.link-wrapper {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  animation: fadeIn 0.25s ease;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.link-wrapper input[type="text"] {
+  flex: 1;
+  background: var(--bg-input);
+  border: 1px solid var(--border);
+  color: var(--primary);
+  padding: 8px 10px;
+  border-radius: var(--radius);
+  font-family: monospace;
+  font-size: 0.82rem;
+  cursor: text;
+  min-width: 0;
+}
+
+.link-wrapper input[type="text"]:focus {
+  outline: 2px solid var(--primary);
+}
+
+.btn-copy {
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+/* Notice de sécurité sous le lien de partage */
+.share-notice {
+  margin: 0;
+  font-size: 0.78rem;
+  color: var(--text-muted);
+  line-height: 1.4;
+}

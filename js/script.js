@@ -21,8 +21,11 @@ const btnCancel = document.getElementById('typeCancel');
 const btnConfirm = document.getElementById('typeConfirm');
 const btnDeleteType = document.getElementById('typeDelete');
 
-// State
+// État global
 let items = [];
+let currentShareId = null; // ID du partage cloud actif
+let currentEncKey = null; // CryptoKey AES-GCM active (jamais envoyée au serveur)
+
 const DEFAULT_TYPES = {
   sequence: { label: 'Séquence', color: '#3b82f6', duration: 60 },
   speak: { label: 'Speak', color: '#f59e0b', duration: 60 },
@@ -349,15 +352,61 @@ const Network = {
 
 // --- Initialization ---
 
-function init() {
+async function init() {
   loadTypes();
-  loadState();
   updatePalette();
+
+  const urlParams = new URLSearchParams(window.location.search);
+  const shareParam = urlParams.get('s');    // ID du partage cloud
+  const roomParam = urlParams.get('room'); // ID de salle PeerJS
+
+  if (shareParam) {
+    // Récupérer la clé de chiffrement depuis le #hash (jamais envoyée au serveur)
+    const hashCle = window.location.hash.replace('#', '');
+
+    if (hashCle) {
+      try {
+        currentEncKey = await importerCle(hashCle);
+        currentShareId = shareParam;
+        const res = await fetch(`save_share.php?getID=${encodeURIComponent(shareParam)}`);
+        if (res.ok) {
+          const envelope = await res.json();
+          if (envelope.encryptedPayload) {
+            // Déchiffrer localement avec la clé extraite du hash
+            const data = await dechiffrer(envelope.encryptedPayload, currentEncKey);
+            if (data.types) { types = data.types; saveTypes(); updatePalette(); }
+            if (Array.isArray(data.items)) items = data.items;
+            if (data.showName) showNameInp.value = data.showName;
+            if (data.startTime) startInp.value = data.startTime;
+          }
+        } else {
+          console.warn('Partage introuvable ou expiré.');
+          currentShareId = null; currentEncKey = null;
+          loadState();
+        }
+      } catch (err) {
+        console.error('Erreur lors du chargement du partage chiffré :', err);
+        currentShareId = null; currentEncKey = null;
+        loadState();
+      }
+    } else {
+      // Lien sans clé : impossible de déchiffrer
+      console.warn('Clé de chiffrement absente du hash — chargement impossible.');
+      loadState();
+    }
+  } else {
+    loadState();
+  }
+
   render();
   setupEventListeners();
 
-  // Initialize Network
-  Network.init();
+  // PeerJS démarre uniquement si le lien contient ?room=
+  if (roomParam) {
+    Network.init();
+  } else {
+    Network.updateStatus('offline');
+  }
 }
 
 function setupEventListeners() {
@@ -399,20 +448,105 @@ function setupEventListeners() {
     window.print();
   });
 
-  // Share Button — lazily starts hosting if not already
-  document.getElementById('btnShare').addEventListener('click', async () => {
-    const hostId = await Network.startHosting();
-    if (!hostId) {
-      alert('Impossible de démarrer la collaboration. Vérifiez votre connexion.');
-      return;
-    }
-    const url = new URL(window.location.href);
-    url.searchParams.delete('room'); // keep base URL clean for the host
-    url.searchParams.set('room', hostId);
-
-    navigator.clipboard.writeText(url.toString()).then(() => {
-      alert(`Lien copié !\nPartagez ce lien pour collaborer :\n${url.toString()}`);
+  // Share Modal — open
+  const btnOpenShareModal = document.getElementById('btnOpenShareModal');
+  if (btnOpenShareModal) {
+    btnOpenShareModal.addEventListener('click', () => {
+      document.getElementById('shareModal').classList.remove('hidden');
     });
+  }
+
+  // Share Modal — close (X button)
+  document.getElementById('btnCloseShareModal')?.addEventListener('click', () => {
+    document.getElementById('shareModal').classList.add('hidden');
+  });
+
+  // Share Modal — close on backdrop click
+  document.getElementById('shareModal')?.addEventListener('click', (e) => {
+    if (e.target === document.getElementById('shareModal')) {
+      document.getElementById('shareModal').classList.add('hidden');
+    }
+  });
+
+  // Cloud : Générer le lien de partage chiffré
+  document.getElementById('btnGenerateCloudLink')?.addEventListener('click', async () => {
+    const btn = document.getElementById('btnGenerateCloudLink');
+    btn.disabled = true;
+    btn.textContent = '⏳ Chiffrement en cours...';
+    try {
+      // Générer une nouvelle clé AES-GCM 256 bits
+      currentEncKey = await genererCle();
+      const cleB64 = await exporterCle(currentEncKey);
+
+      // Chiffrer le payload et l'envoyer (le serveur ne voit que le blob opaque)
+      const payloadChiffre = await chiffrer(buildSharePayload(), currentEncKey);
+      const res = await fetch('save_share.php', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          showName: showNameInp.value,
+          encryptedPayload: payloadChiffre
+        })
+      });
+      const resultat = await res.json();
+
+      if (resultat.succes && resultat.shareId) {
+        currentShareId = resultat.shareId;
+        // La clé est placée dans le #hash — jamais envoyée au serveur
+        const url = buildShareUrl('s', currentShareId) + '#' + cleB64;
+        document.getElementById('cloudLinkInput').value = url;
+        document.getElementById('cloudLinkWrapper').classList.remove('hidden');
+        document.getElementById('cloudNotice').classList.remove('hidden');
+        // Masquer le bouton (autosave prend le relais)
+        btn.classList.add('hidden');
+      } else {
+        alert('Erreur lors de la sauvegarde : ' + (resultat.erreur || 'Inconnue'));
+        btn.textContent = '☁️ Générer lien de partage';
+        btn.disabled = false;
+      }
+    } catch (err) {
+      console.error(err);
+      alert('Erreur réseau ou de chiffrement.');
+      btn.textContent = '☁️ Générer lien de partage';
+      btn.disabled = false;
+    }
+  });
+
+  // Cloud: Copy link
+  document.getElementById('btnCopyCloudLink')?.addEventListener('click', () => {
+    const val = document.getElementById('cloudLinkInput').value;
+    if (val) copyToClipboard(val, document.getElementById('btnCopyCloudLink'));
+  });
+
+  // Live: Activate PeerJS hosting
+  document.getElementById('btnStartLive')?.addEventListener('click', async () => {
+    const btn = document.getElementById('btnStartLive');
+    btn.disabled = true;
+    btn.textContent = '⏳ Démarrage...';
+    try {
+      const hostId = await Network.startHosting();
+      if (!hostId) {
+        alert('Impossible de démarrer la collaboration. Vérifiez votre connexion.');
+        btn.textContent = '🤝 Activer session Live';
+        btn.disabled = false;
+        return;
+      }
+      const url = buildShareUrl('room', hostId);
+      const input = document.getElementById('liveLinkInput');
+      input.value = url;
+      document.getElementById('liveLinkWrapper').classList.remove('hidden');
+      btn.textContent = '🟢 Session Live active';
+    } catch (err) {
+      console.error(err);
+      btn.textContent = '🤝 Activer session Live';
+      btn.disabled = false;
+    }
+  });
+
+  // Live: Copy link
+  document.getElementById('btnCopyLiveLink')?.addEventListener('click', () => {
+    const val = document.getElementById('liveLinkInput').value;
+    if (val) copyToClipboard(val, document.getElementById('btnCopyLiveLink'));
   });
 
   // Cleanup peer on page close / navigation
@@ -458,7 +592,9 @@ function render() {
   updateStats(currentTime, totalSeconds);
   saveState();
   updateTitle();
+  syncToServer();
 }
+
 
 function createBlockElement(it, index, startTimeSeconds) {
   const el = document.createElement('div');
@@ -927,7 +1063,148 @@ function loadJson(e) {
   e.target.value = '';
 }
 
+// =============================================================
+// --- Chiffrement de bout en bout (E2EE) — AES-GCM 256 bits ---
+// =============================================================
+
+/**
+ * Génère une clé AES-GCM 256 bits extractible.
+ */
+async function genererCle() {
+  return crypto.subtle.generateKey(
+    { name: 'AES-GCM', length: 256 },
+    true,  // extractible pour l'exporter dans l'URL
+    ['encrypt', 'decrypt']
+  );
+}
+
+/**
+ * Exporte une CryptoKey vers une chaîne base64url (safe pour les URL).
+ */
+async function exporterCle(cle) {
+  const raw = await crypto.subtle.exportKey('raw', cle);
+  return btoa(String.fromCharCode(...new Uint8Array(raw)))
+    .replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '');
+}
+
+/**
+ * Importe une clé depuis sa représentation base64url.
+ */
+async function importerCle(b64url) {
+  const b64 = b64url.replace(/-/g, '+').replace(/_/g, '/') +
+    '='.repeat((4 - b64url.length % 4) % 4);
+  const raw = Uint8Array.from(atob(b64), c => c.charCodeAt(0));
+  return crypto.subtle.importKey('raw', raw, { name: 'AES-GCM' }, true, ['encrypt', 'decrypt']);
+}
+
+/**
+ * Chiffre un objet JS avec AES-GCM.
+ * Retourne une chaîne base64 contenant [IV (12 octets) + données chiffrées].
+ */
+async function chiffrer(objet, cle) {
+  const iv = crypto.getRandomValues(new Uint8Array(12));
+  const data = new TextEncoder().encode(JSON.stringify(objet));
+  const encrypted = await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, cle, data);
+  // Concaténer IV + ciphertext → base64
+  const combined = new Uint8Array(iv.byteLength + encrypted.byteLength);
+  combined.set(iv, 0);
+  combined.set(new Uint8Array(encrypted), iv.byteLength);
+  return btoa(String.fromCharCode(...combined));
+}
+
+/**
+ * Déchiffre une chaîne base64 (IV + ciphertext) avec AES-GCM.
+ * Retourne l'objet JS original.
+ */
+async function dechiffrer(b64, cle) {
+  const combined = Uint8Array.from(atob(b64), c => c.charCodeAt(0));
+  const iv = combined.slice(0, 12);
+  const ciphertext = combined.slice(12);
+  const decrypted = await crypto.subtle.decrypt({ name: 'AES-GCM', iv }, cle, ciphertext);
+  return JSON.parse(new TextDecoder().decode(decrypted));
+}
+
+// --- Helpers de partage ---
+
+/**
+ * Synchronise silencieusement l'état du conducteur vers le serveur.
+ * Ne fait rien si aucun partage cloud n'est actif.
+ * Appelée à la fin de chaque render() — non bloquante.
+ */
+function syncToServer() {
+  if (!currentShareId || !currentEncKey) return;
+  // Chiffrement + envoi asynchrone sans bloquer l'UI
+  (async () => {
+    try {
+      const payloadChiffre = await chiffrer(buildSharePayload(), currentEncKey);
+      const res = await fetch('save_share.php', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          shareId: currentShareId,
+          showName: showNameInp.value,
+          encryptedPayload: payloadChiffre
+        })
+      });
+      if (!res.ok) console.warn('syncToServer : erreur serveur', res.status);
+    } catch (err) {
+      console.warn('syncToServer : erreur réseau ou chiffrement', err);
+    }
+  })();
+}
+
+/**
+ * Construit le payload complet de l'état du conducteur.
+ */
+function buildSharePayload() {
+  return {
+    meta: { version: '1.2', generated: new Date().toISOString() },
+    showName: showNameInp.value,
+    startTime: startInp.value,
+    types: types,
+    items: items
+  };
+}
+
+/**
+ * Construit une URL de partage avec le paramètre donné.
+ * Supprime ?s et ?room pour éviter les conflits.
+ * Note : la clé de chiffrement est ajoutée APRÈS via + '#' + cle.
+ */
+function buildShareUrl(paramKey, valeur) {
+  const url = new URL(window.location.href);
+  url.searchParams.delete('s');
+  url.searchParams.delete('room');
+  url.hash = ''; // Nettoyer le hash existant
+  url.searchParams.set(paramKey, valeur);
+  return url.toString();
+}
+
+/**
+ * Copie un texte dans le presse-papier avec retour visuel sur le bouton.
+ */
+function copyToClipboard(texte, btn) {
+  navigator.clipboard.writeText(texte).then(() => {
+    const original = btn.textContent;
+    btn.textContent = '✅ Copié !';
+    setTimeout(() => { btn.textContent = original; }, 2000);
+  }).catch(() => {
+    // Fallback pour les contextes non-HTTPS
+    const ta = document.createElement('textarea');
+    ta.value = texte;
+    ta.style.cssText = 'position:fixed;opacity:0';
+    document.body.appendChild(ta);
+    ta.select();
+    document.execCommand('copy');
+    document.body.removeChild(ta);
+    const original = btn.textContent;
+    btn.textContent = '✅ Copié !';
+    setTimeout(() => { btn.textContent = original; }, 2000);
+  });
+}
+
 // --- Helpers ---
+
 
 function parseTime(str) {
   const [h, m] = str.split(':').map(Number);

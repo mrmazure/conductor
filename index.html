@@ -86,8 +86,8 @@
 
             <div class="separator" style="width: 1px; height: 24px; background: #3f3f46; margin: 0 4px;"></div>
 
-            <button class="btn btn-primary" id="btnShare" title="Collaboration en direct">
-                🤝 Collaboration live
+            <button class="btn btn-primary" id="btnOpenShareModal" title="Partager ou collaborer">
+                🔗 Partager / Collaborer
             </button>
 
             <!-- Hidden Input for loading JSON -->
@@ -146,6 +146,56 @@
                 <span class="spacer"></span>
                 <button id="typeCancel" class="btn btn-text">Annuler</button>
                 <button id="typeConfirm" class="btn btn-primary">Enregistrer</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Share / Collaborate Modal -->
+    <div id="shareModal" class="modal hidden">
+        <div class="modal-content share-modal-content">
+            <div class="share-modal-header">
+                <h2>🔗 Partager / Collaborer</h2>
+                <button class="btn-icon" id="btnCloseShareModal" title="Fermer">✕</button>
+            </div>
+
+            <!-- SECTION CLOUD -->
+            <div class="share-section">
+                <div class="share-section-title">
+                    <span class="share-icon">☁️</span>
+                    <div>
+                        <strong>Sauvegarde Cloud (chiffrée)</strong>
+                        <p>Génère un lien unique pour partager le conducteur. Les données sont chiffrées, le serveur ne
+                            peut pas les lire.</p>
+                    </div>
+                </div>
+                <button class="btn btn-secondary" id="btnGenerateCloudLink">☁️ Générer lien de partage</button>
+                <div id="cloudLinkWrapper" class="link-wrapper hidden">
+                    <input type="text" id="cloudLinkInput" readonly placeholder="Lien en cours de génération...">
+                    <button class="btn btn-secondary btn-copy" id="btnCopyCloudLink" title="Copier le lien">📋
+                        Copier</button>
+                </div>
+                <p id="cloudNotice" class="share-notice hidden">🔒 Chiffré de bout en bout. Lien valable 30 jours. Les
+                    modifications sont synchronisées automatiquement.</p>
+            </div>
+
+
+            <div class="share-divider"></div>
+
+            <!-- SECTION LIVE -->
+            <div class="share-section">
+                <div class="share-section-title">
+                    <span class="share-icon">🤝</span>
+                    <div>
+                        <strong>Collaboration Live</strong>
+                        <p>Travaillez en temps réel avec vos collaborateurs.</p>
+                    </div>
+                </div>
+                <button class="btn btn-primary" id="btnStartLive">🤝 Activer session Live</button>
+                <div id="liveLinkWrapper" class="link-wrapper hidden">
+                    <input type="text" id="liveLinkInput" readonly placeholder="Lien en cours de génération...">
+                    <button class="btn btn-secondary btn-copy" id="btnCopyLiveLink" title="Copier le lien">📋
+                        Copier</button>
+                </div>
             </div>
         </div>
     </div>
