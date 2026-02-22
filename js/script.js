@@ -33,11 +33,11 @@ let currentEncKey = null; // CryptoKey AES-GCM active (jamais envoyée au serveu
 
 function getDefaultTypes() {
   return {
-    sequence: { label: t('default.types.sequence'), color: '#3b82f6', duration: 60 },
-    speak:    { label: t('default.types.speak'),    color: '#f59e0b', duration: 60 },
-    pub:      { label: t('default.types.pub'),      color: '#10b981', duration: 60 },
-    musique:  { label: t('default.types.musique'),  color: '#8b5cf6', duration: 180 },
-    autre:    { label: t('default.types.autre'),    color: '#ef4444', duration: 60 }
+    sequence: { label: t('default.types.sequence'), i18nKey: 'default.types.sequence', color: '#3b82f6', duration: 60 },
+    speak:    { label: t('default.types.speak'),    i18nKey: 'default.types.speak',    color: '#f59e0b', duration: 60 },
+    pub:      { label: t('default.types.pub'),      i18nKey: 'default.types.pub',      color: '#10b981', duration: 60 },
+    musique:  { label: t('default.types.musique'),  i18nKey: 'default.types.musique',  color: '#8b5cf6', duration: 180 },
+    autre:    { label: t('default.types.autre'),    i18nKey: 'default.types.autre',    color: '#ef4444', duration: 60 }
   };
 }
 
@@ -912,6 +912,15 @@ function loadTypes() {
       }
       Object.keys(parsed).forEach(k => {
         if (!parsed[k].duration) parsed[k].duration = 60;
+        // Migration: restore i18nKey for default types whose label still matches
+        // any known locale translation (i.e. user hasn't renamed them).
+        const defaultI18nKey = 'default.types.' + k;
+        if (!parsed[k].i18nKey && window.LOCALES) {
+          const isDefaultLabel = ['fr', 'en', 'es'].some(lang =>
+            window.LOCALES[lang] && window.LOCALES[lang][defaultI18nKey] === parsed[k].label
+          );
+          if (isDefaultLabel) parsed[k].i18nKey = defaultI18nKey;
+        }
       });
       Object.assign(types, parsed);
     }
@@ -931,7 +940,7 @@ function updatePalette() {
     const div = document.createElement('div');
     div.className = `block ${key}`;
     div.draggable = true;
-    div.textContent = types[key].label;
+    div.textContent = types[key].i18nKey ? t(types[key].i18nKey) : types[key].label;
     div.dataset.type = key;
     div.style.borderLeftColor = types[key].color;
     div.addEventListener('dragstart', handlePaletteDragStart);
@@ -959,7 +968,7 @@ function openModal(editKey = null) {
   modal.dataset.key = editKey || '';
 
   if (editKey && types[editKey]) {
-    inpName.value = types[editKey].label;
+    inpName.value = types[editKey].i18nKey ? t(types[editKey].i18nKey) : types[editKey].label;
     inpColor.value = types[editKey].color;
     inpDuration.value = formatDuration(types[editKey].duration || 60);
     btnDeleteType.classList.remove('hidden');
@@ -988,6 +997,11 @@ function confirmTypeEdit() {
     types[key].label = name;
     types[key].color = color;
     types[key].duration = duration;
+    // If the user changed the name away from the default, drop the i18n key
+    // so the custom name is displayed instead of the auto-translated one.
+    if (types[key].i18nKey && name !== t(types[key].i18nKey)) {
+      delete types[key].i18nKey;
+    }
   } else {
     const newKey = name.toLowerCase().replace(/[^a-z0-9]/g, '-') + '-' + Date.now().toString().slice(-4);
     types[newKey] = { label: name, color, duration };
@@ -1378,6 +1392,7 @@ function exportToODS() {
 
 // Called by i18n.js after every language change to re-apply dynamic UI strings
 window.onLangChange = function () {
+  updatePalette();   // Re-renders block type labels in the sidebar
   render();          // Re-builds blocks (duration label, placeholders, button titles)
   updateTitle();     // Updates browser tab title
   // Re-apply connection status tooltip in new language
