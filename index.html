@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="fr">
+<html lang="en">
 
 <head>
     <meta charset="UTF-8">
@@ -15,6 +15,12 @@
     <link rel="stylesheet" href="style.css">
     <!-- PeerJS for Real-time Collaboration -->
     <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
+    <!-- Locale files (must load before i18n.js) -->
+    <script src="locales/fr.js"></script>
+    <script src="locales/en.js"></script>
+    <script src="locales/es.js"></script>
+    <!-- i18n system -->
+    <script src="js/i18n.js"></script>
 </head>
 
 <body>
@@ -28,20 +34,32 @@
         <h1>| Conductor By MrMazure</h1>
 
         <!-- Connection Status -->
-        <div id="connection-status" class="connection-status hidden" title="Statut de la connexion">
+        <div id="connection-status" class="connection-status hidden" data-i18n-title="header.connectionTitle">
             <span class="status-dot"></span>
-            <span class="peer-label hidden">Collaborateurs : </span>
+            <span class="peer-label hidden" data-i18n="peer.collaborators">Collaborators: </span>
             <span class="peer-count hidden">0</span>
         </div>
 
         <div class="header-stats">
             <div class="stat-item">
-                <span class="stat-label">Fin prévisionnelle</span>
+                <span class="stat-label" data-i18n="header.endTime">Estimated end</span>
                 <span class="stat-value" id="endTimeDisplay">--:--</span>
             </div>
             <div class="stat-item">
-                <span class="stat-label">Durée totale</span>
+                <span class="stat-label" data-i18n="header.totalDuration">Total duration</span>
                 <span class="stat-value" id="totalDurationDisplay">00:00</span>
+            </div>
+        </div>
+
+        <!-- Language Dropdown -->
+        <div class="lang-dropdown" id="langDropdown">
+            <button class="btn btn-secondary lang-toggle" id="btnLang" data-i18n-title="btn.lang.title">
+                🌐 <span id="langLabel">EN</span> <span class="lang-chevron">▾</span>
+            </button>
+            <div class="lang-menu hidden" id="langMenu">
+                <button class="lang-option" data-lang="fr">🇫🇷 Français</button>
+                <button class="lang-option" data-lang="en">🇬🇧 English</button>
+                <button class="lang-option" data-lang="es">🇪🇸 Español</button>
             </div>
         </div>
     </header>
@@ -50,44 +68,57 @@
     <div class="top-bar">
         <div class="show-inputs">
             <div class="input-group">
-                <label for="showName">Nom de l'émission</label>
-                <input type="text" id="showName" placeholder="Titre de l'émission">
+                <label for="showName" data-i18n="topbar.showName.label">Show name</label>
+                <input type="text" id="showName" data-i18n-placeholder="topbar.showName.placeholder">
             </div>
             <div class="input-group">
-                <label for="startTime">Heure de début</label>
+                <label for="startTime" data-i18n="topbar.startTime.label">Start time</label>
                 <input type="time" id="startTime" value="07:00">
             </div>
         </div>
         <div class="controls">
             <!-- Clear Actions -->
             <button class="btn btn-secondary" id="btnClearDescriptions"
-                title="Vider uniquement le texte des descriptions">
-                🧹 Vider Desc.
+                data-i18n="btn.clearDesc"
+                data-i18n-title="btn.clearDesc.title">
+                🧹 Clear Desc.
             </button>
-            <button class="btn btn-danger" id="btnClear" title="Tout effacer">
-                🗑️ Tout effacer
+            <button class="btn btn-danger" id="btnClear"
+                data-i18n="btn.clearAll"
+                data-i18n-title="btn.clearAll.title">
+                🗑️ Clear all
             </button>
 
             <div class="separator" style="width: 1px; height: 24px; background: #3f3f46; margin: 0 4px;"></div>
 
             <!-- Individual Action Buttons -->
-            <button class="btn btn-secondary" id="btnSaveJson" title="Sauvegarder (.json)">
-                💾 Sauver
+            <button class="btn btn-secondary" id="btnSaveJson"
+                data-i18n="btn.save"
+                data-i18n-title="btn.save.title">
+                💾 Save
             </button>
-            <button class="btn btn-secondary" id="btnLoadJson" title="Ouvrir (.json)">
-                📂 Ouvrir
+            <button class="btn btn-secondary" id="btnLoadJson"
+                data-i18n="btn.load"
+                data-i18n-title="btn.load.title">
+                📂 Open
             </button>
-            <button class="btn btn-secondary" id="btnExportODS" title="Exporter ODS">
+            <button class="btn btn-secondary" id="btnExportODS"
+                data-i18n="btn.excel"
+                data-i18n-title="btn.excel.title">
                 📤 Excel
             </button>
-            <button class="btn btn-primary" id="btnPrint" title="Imprimer / PDF">
-                🖨️ Imprimer / PDF
+            <button class="btn btn-primary" id="btnPrint"
+                data-i18n="btn.print"
+                data-i18n-title="btn.print.title">
+                🖨️ Print / PDF
             </button>
 
             <div class="separator" style="width: 1px; height: 24px; background: #3f3f46; margin: 0 4px;"></div>
 
-            <button class="btn btn-primary" id="btnOpenShareModal" title="Partager ou collaborer">
-                🔗 Partager / Collaborer
+            <button class="btn btn-primary" id="btnOpenShareModal"
+                data-i18n="btn.share"
+                data-i18n-title="btn.share.title">
+                🔗 Share / Collaborate
             </button>
 
             <!-- Hidden Input for loading JSON -->
@@ -101,10 +132,10 @@
         <!-- Sidebar Palette -->
         <aside id="palette">
             <div class="palette-header">
-                <h3>Blocs</h3>
+                <h3 data-i18n="palette.title">Blocks</h3>
                 <div style="display: flex; gap: 4px;">
-                    <button class="btn-icon" id="btnResetTypes" title="Réinitialiser les types de bloc">🔄</button>
-                    <button class="btn-icon" id="btnAddType" title="Ajouter un type de bloc">➕</button>
+                    <button class="btn-icon" id="btnResetTypes" data-i18n-title="palette.reset.title">🔄</button>
+                    <button class="btn-icon" id="btnAddType" data-i18n-title="palette.add.title">➕</button>
                 </div>
             </div>
             <div class="palette-content">
@@ -112,7 +143,7 @@
             </div>
             <div class="palette-footer"
                 style="margin-top: auto; padding-top: 10px; font-size: 0.75rem; color: var(--text-muted); line-height: 1.4; border-top: 1px solid var(--border);">
-                💡 <em>Clic droit = éditer les paramètres du bloc</em>
+                <span data-i18n-html="palette.tip"></span>
             </div>
         </aside>
 
@@ -127,25 +158,25 @@
     <!-- Type Manager Modal -->
     <div id="typeModal" class="modal hidden">
         <div class="modal-content">
-            <h2>Gérer le Type</h2>
+            <h2 data-i18n="modal.type.title">Manage Type</h2>
             <div class="form-group">
-                <label>Nom du bloc</label>
+                <label data-i18n="modal.type.labelName">Block name</label>
                 <input type="text" id="newTypeName" placeholder="Ex: Interview">
             </div>
             <div class="form-group">
-                <label>Couleur</label>
+                <label data-i18n="modal.type.labelColor">Color</label>
                 <input type="color" id="newTypeColor" value="#3b82f6">
             </div>
             <div class="form-group">
-                <label>Durée par défaut (mm:ss)</label>
+                <label data-i18n="modal.type.labelDuration">Default duration (mm:ss)</label>
                 <input type="text" id="newTypeDuration" value="01:00" placeholder="01:00">
             </div>
 
             <div class="modal-actions">
-                <button id="typeDelete" class="btn btn-danger hidden">Supprimer</button>
+                <button id="typeDelete" class="btn btn-danger hidden" data-i18n="modal.type.delete">Delete</button>
                 <span class="spacer"></span>
-                <button id="typeCancel" class="btn btn-text">Annuler</button>
-                <button id="typeConfirm" class="btn btn-primary">Enregistrer</button>
+                <button id="typeCancel" class="btn btn-text" data-i18n="modal.type.cancel">Cancel</button>
+                <button id="typeConfirm" class="btn btn-primary" data-i18n="modal.type.confirm">Save</button>
             </div>
         </div>
     </div>
@@ -154,8 +185,8 @@
     <div id="shareModal" class="modal hidden">
         <div class="modal-content share-modal-content">
             <div class="share-modal-header">
-                <h2>🔗 Partager / Collaborer</h2>
-                <button class="btn-icon" id="btnCloseShareModal" title="Fermer">✕</button>
+                <h2 data-i18n="share.title">🔗 Share / Collaborate</h2>
+                <button class="btn-icon" id="btnCloseShareModal" data-i18n-title="share.close.title">✕</button>
             </div>
 
             <!-- SECTION CLOUD -->
@@ -163,19 +194,16 @@
                 <div class="share-section-title">
                     <span class="share-icon">☁️</span>
                     <div>
-                        <strong>Sauvegarde Cloud (chiffrée)</strong>
-                        <p>Génère un lien unique pour partager le conducteur. Les données sont chiffrées, le serveur ne
-                            peut pas les lire.</p>
+                        <strong data-i18n="share.cloud.title">Encrypted Cloud Backup</strong>
+                        <p data-i18n="share.cloud.desc">Generates a unique link to share the rundown. Data is encrypted; the server cannot read it.</p>
                     </div>
                 </div>
-                <button class="btn btn-secondary" id="btnGenerateCloudLink">☁️ Générer lien de partage</button>
+                <button class="btn btn-secondary" id="btnGenerateCloudLink" data-i18n="share.cloud.btn">☁️ Generate share link</button>
                 <div id="cloudLinkWrapper" class="link-wrapper hidden">
-                    <input type="text" id="cloudLinkInput" readonly placeholder="Lien en cours de génération...">
-                    <button class="btn btn-secondary btn-copy" id="btnCopyCloudLink" title="Copier le lien">📋
-                        Copier</button>
+                    <input type="text" id="cloudLinkInput" readonly data-i18n-placeholder="share.cloud.placeholder">
+                    <button class="btn btn-secondary btn-copy" id="btnCopyCloudLink" data-i18n-title="share.cloud.copy.title" data-i18n="share.copy">📋 Copy</button>
                 </div>
-                <p id="cloudNotice" class="share-notice hidden">🔒 Chiffré de bout en bout. Lien valable 30 jours. Les
-                    modifications sont synchronisées automatiquement.</p>
+                <p id="cloudNotice" class="share-notice hidden" data-i18n="share.cloud.notice">🔒 End-to-end encrypted. Link valid for 30 days. Changes are synced automatically.</p>
             </div>
 
 
@@ -186,15 +214,14 @@
                 <div class="share-section-title">
                     <span class="share-icon">🤝</span>
                     <div>
-                        <strong>Collaboration Live</strong>
-                        <p>Travaillez en temps réel avec vos collaborateurs.</p>
+                        <strong data-i18n="share.live.title">Live Collaboration</strong>
+                        <p data-i18n="share.live.desc">Work in real time with your collaborators.</p>
                     </div>
                 </div>
-                <button class="btn btn-primary" id="btnStartLive">🤝 Activer session Live</button>
+                <button class="btn btn-primary" id="btnStartLive" data-i18n="share.live.btn">🤝 Start Live session</button>
                 <div id="liveLinkWrapper" class="link-wrapper hidden">
-                    <input type="text" id="liveLinkInput" readonly placeholder="Lien en cours de génération...">
-                    <button class="btn btn-secondary btn-copy" id="btnCopyLiveLink" title="Copier le lien">📋
-                        Copier</button>
+                    <input type="text" id="liveLinkInput" readonly data-i18n-placeholder="share.live.placeholder">
+                    <button class="btn btn-secondary btn-copy" id="btnCopyLiveLink" data-i18n-title="share.live.copy.title" data-i18n="share.copy">📋 Copy</button>
                 </div>
             </div>
         </div>

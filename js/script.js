@@ -1,3 +1,8 @@
+// i18n shorthand — window.i18n is set up by i18n.js before this script runs
+function t(key, ...params) {
+  return window.i18n ? window.i18n.t(key, ...params) : key;
+}
+
 // DOM Elements
 const palette = document.getElementById('palette');
 const conductor = document.getElementById('conductor');
@@ -26,15 +31,17 @@ let items = [];
 let currentShareId = null; // ID du partage cloud actif
 let currentEncKey = null; // CryptoKey AES-GCM active (jamais envoyée au serveur)
 
-const DEFAULT_TYPES = {
-  sequence: { label: 'Séquence', color: '#3b82f6', duration: 60 },
-  speak: { label: 'Speak', color: '#f59e0b', duration: 60 },
-  pub: { label: 'Publicité', color: '#10b981', duration: 60 },
-  musique: { label: 'Musique', color: '#8b5cf6', duration: 180 },
-  autre: { label: 'Autre', color: '#ef4444', duration: 60 }
-};
+function getDefaultTypes() {
+  return {
+    sequence: { label: t('default.types.sequence'), color: '#3b82f6', duration: 60 },
+    speak:    { label: t('default.types.speak'),    color: '#f59e0b', duration: 60 },
+    pub:      { label: t('default.types.pub'),      color: '#10b981', duration: 60 },
+    musique:  { label: t('default.types.musique'),  color: '#8b5cf6', duration: 180 },
+    autre:    { label: t('default.types.autre'),    color: '#ef4444', duration: 60 }
+  };
+}
 
-let types = JSON.parse(JSON.stringify(DEFAULT_TYPES));
+let types = getDefaultTypes();
 
 // --- Network Manager ---
 const Network = {
@@ -319,6 +326,7 @@ const Network = {
   },
 
   updateStatus(status) {
+    this.currentStatus = status;
     const dot = connectionStatus.querySelector('.status-dot');
     const label = connectionStatus.querySelector('.peer-label');
     const count = connectionStatus.querySelector('.peer-count');
@@ -336,11 +344,13 @@ const Network = {
       label.classList.remove('hidden');
       count.classList.remove('hidden');
       count.textContent = this.conn.length + 1; // +1 for me
-      connectionStatus.title = `Hôte actif — ${this.conn.length} collaborateur(s) connecté(s)`;
+      connectionStatus.title = t('peer.hostTitle', this.conn.length);
     } else {
       label.classList.add('hidden');
       count.classList.add('hidden');
-      connectionStatus.title = status === 'connecting' ? 'Connexion en cours...' : `Connecté (session: ${this.myId})`;
+      connectionStatus.title = status === 'connecting'
+        ? t('peer.connecting')
+        : t('peer.connected', this.myId);
     }
   },
 
@@ -426,6 +436,12 @@ function setupEventListeners() {
   conductor.addEventListener('dragover', handleDragOver);
   conductor.addEventListener('drop', handleDrop);
   conductor.addEventListener('dragleave', handleDragLeave);
+  // Safety net: always remove the placeholder when any drag ends,
+  // whether by a successful drop, an Escape key, or releasing outside.
+  document.addEventListener('dragend', () => {
+    placeholder.remove();
+    dragSrcIndex = null;
+  });
 
   // Modal
   btnAddType.addEventListener('click', () => openModal());
@@ -472,7 +488,7 @@ function setupEventListeners() {
   document.getElementById('btnGenerateCloudLink')?.addEventListener('click', async () => {
     const btn = document.getElementById('btnGenerateCloudLink');
     btn.disabled = true;
-    btn.textContent = '⏳ Chiffrement en cours...';
+    btn.textContent = t('share.cloud.encrypting');
     try {
       // Générer une nouvelle clé AES-GCM 256 bits
       currentEncKey = await genererCle();
@@ -500,14 +516,14 @@ function setupEventListeners() {
         // Masquer le bouton (autosave prend le relais)
         btn.classList.add('hidden');
       } else {
-        alert('Erreur lors de la sauvegarde : ' + (resultat.erreur || 'Inconnue'));
-        btn.textContent = '☁️ Générer lien de partage';
+        alert(t('alert.saveError') + (resultat.erreur || '?'));
+        btn.textContent = t('share.cloud.btn');
         btn.disabled = false;
       }
     } catch (err) {
       console.error(err);
-      alert('Erreur réseau ou de chiffrement.');
-      btn.textContent = '☁️ Générer lien de partage';
+      alert(t('alert.networkError'));
+      btn.textContent = t('share.cloud.btn');
       btn.disabled = false;
     }
   });
@@ -522,12 +538,12 @@ function setupEventListeners() {
   document.getElementById('btnStartLive')?.addEventListener('click', async () => {
     const btn = document.getElementById('btnStartLive');
     btn.disabled = true;
-    btn.textContent = '⏳ Démarrage...';
+    btn.textContent = t('share.live.starting');
     try {
       const hostId = await Network.startHosting();
       if (!hostId) {
-        alert('Impossible de démarrer la collaboration. Vérifiez votre connexion.');
-        btn.textContent = '🤝 Activer session Live';
+        alert(t('alert.liveError'));
+        btn.textContent = t('share.live.btn');
         btn.disabled = false;
         return;
       }
@@ -535,10 +551,10 @@ function setupEventListeners() {
       const input = document.getElementById('liveLinkInput');
       input.value = url;
       document.getElementById('liveLinkWrapper').classList.remove('hidden');
-      btn.textContent = '🟢 Session Live active';
+      btn.textContent = t('share.live.active');
     } catch (err) {
       console.error(err);
-      btn.textContent = '🤝 Activer session Live';
+      btn.textContent = t('share.live.btn');
       btn.disabled = false;
     }
   });
@@ -574,7 +590,16 @@ function setupEventListeners() {
 
 function render() {
   conductor.innerHTML = '';
-  conductor.classList.toggle('empty', items.length === 0);
+  const isEmpty = items.length === 0;
+  conductor.classList.toggle('empty', isEmpty);
+
+  // Translated empty-state message (replaces the old CSS ::before trick)
+  if (isEmpty) {
+    const msg = document.createElement('p');
+    msg.className = 'conductor-empty-msg';
+    msg.textContent = t('conductor.empty');
+    conductor.appendChild(msg);
+  }
 
   let currentTime = parseTime(startInp.value || '00:00');
   let totalSeconds = 0;
@@ -627,19 +652,19 @@ function createBlockElement(it, index, startTimeSeconds) {
   const typeLabel = types[it.type]?.label || it.type;
 
   el.innerHTML += `
-        <div class="drag-handle" draggable="true" title="Déplacer">☰</div>
+        <div class="drag-handle" draggable="true" title="${t('block.move.title')}">☰</div>
         <div class="time-display">${timeStr}</div>
         <div class="duration-container">
-            <span class="label-duration">Durée</span>
+            <span class="label-duration">${t('block.duration')}</span>
             <input type="text" class="duration-input" value="${formatDuration(it.dur)}" ${lock ? 'disabled' : ''}>
         </div>
         <div class="content">
             <div class="title" contenteditable="${!lock}" spellcheck="false">${it.title}</div>
-            <textarea class="description-input" rows="1" placeholder="Description / Titre / Contenu" ${lock ? 'disabled' : ''}>${it.desc || ''}</textarea>
+            <textarea class="description-input" rows="1" placeholder="${t('block.descPlaceholder')}" ${lock ? 'disabled' : ''}>${it.desc || ''}</textarea>
         </div>
         <div class="item-actions">
-            <button class="btn-mini duplicate" title="Dupliquer" ${lock ? 'disabled' : ''}>❐</button>
-            <button class="btn-mini delete" title="Supprimer" ${lock ? 'disabled' : ''}>✖</button>
+            <button class="btn-mini duplicate" title="${t('block.duplicate.title')}" ${lock ? 'disabled' : ''}>❐</button>
+            <button class="btn-mini delete" title="${t('block.delete.title')}" ${lock ? 'disabled' : ''}>✖</button>
         </div>
     `;
 
@@ -748,7 +773,7 @@ function updateTitle() {
   if (name) {
     document.title = `${name} - RadioTools.be`;
   } else {
-    document.title = 'Conducteur Radio - RadioTools.be';
+    document.title = t('title.default');
   }
 }
 
@@ -793,7 +818,7 @@ function duplicateItem(index) {
 
 function deleteItem(index) {
   const it = items[index];
-  if (confirm('Supprimer ce bloc ?')) {
+  if (confirm(t('confirm.deleteBlock'))) {
     items.splice(index, 1);
     render();
     Network.send({ type: 'DELETE_ITEM', id: it.id });
@@ -801,7 +826,7 @@ function deleteItem(index) {
 }
 
 function clearAll() {
-  if (items.length > 0 && confirm('Voulez-vous vraiment tout effacer ?')) {
+  if (items.length > 0 && confirm(t('confirm.clearAll'))) {
     // We would need to send a CLEAR_ALL message
     // For now simplistic impl
     items = [];
@@ -812,7 +837,7 @@ function clearAll() {
 }
 
 function clearDescriptionsOnly() {
-  if (items.length > 0 && confirm('Voulez-vous vider le texte de TOUTES les descriptions ?')) {
+  if (items.length > 0 && confirm(t('confirm.clearDesc'))) {
     items.forEach(it => {
       it.desc = '';
     });
@@ -856,7 +881,9 @@ function handleDrop(e) {
 }
 
 function handleDragLeave(e) {
-  if (e.relatedTarget && !conductor.contains(e.relatedTarget) && e.target === conductor) {
+  // Remove placeholder as soon as the cursor leaves the conductor area entirely.
+  // Using relatedTarget: if the destination element is outside the conductor, clean up.
+  if (!conductor.contains(e.relatedTarget)) {
     placeholder.remove();
   }
 }
@@ -975,7 +1002,7 @@ function confirmTypeEdit() {
 
 function deleteType() {
   const key = modal.dataset.key;
-  if (key && types[key] && confirm(`Supprimer le type "${types[key].label}" ?`)) {
+  if (key && types[key] && confirm(t('confirm.deleteType', types[key].label))) {
     delete types[key];
     saveTypes();
     updatePalette();
@@ -986,8 +1013,8 @@ function deleteType() {
 }
 
 function resetTypes() {
-  if (confirm('Réinitialiser tous les types de blocs aux valeurs par défaut ?')) {
-    types = JSON.parse(JSON.stringify(DEFAULT_TYPES));
+  if (confirm(t('confirm.resetTypes'))) {
+    types = getDefaultTypes();
     saveTypes();
     updatePalette();
     render();
@@ -1031,7 +1058,7 @@ function saveJson() {
   const a = document.createElement('a');
   a.href = url;
 
-  const name = showNameInp.value.trim() || 'Conducteur';
+  const name = showNameInp.value.trim() || t('ods.defaultName');
   a.download = `${name} - RadioTools.be.json`;
   a.click();
   URL.revokeObjectURL(url);
@@ -1044,7 +1071,7 @@ function loadJson(e) {
   reader.onload = evt => {
     try {
       const data = JSON.parse(evt.target.result);
-      if (confirm('Charger ce fichier ?')) {
+      if (confirm(t('confirm.loadFile'))) {
         if (data.types) {
           types = data.types;
           saveTypes();
@@ -1057,7 +1084,7 @@ function loadJson(e) {
         // Sync full state after load
         Network.send({ type: 'SYNC_FULL', state: data });
       }
-    } catch (err) { alert('Erreur fichier.'); }
+    } catch (err) { alert(t('alert.fileError')); }
   };
   reader.readAsText(file);
   e.target.value = '';
@@ -1186,7 +1213,7 @@ function buildShareUrl(paramKey, valeur) {
 function copyToClipboard(texte, btn) {
   navigator.clipboard.writeText(texte).then(() => {
     const original = btn.textContent;
-    btn.textContent = '✅ Copié !';
+    btn.textContent = t('share.copied');
     setTimeout(() => { btn.textContent = original; }, 2000);
   }).catch(() => {
     // Fallback pour les contextes non-HTTPS
@@ -1198,7 +1225,7 @@ function copyToClipboard(texte, btn) {
     document.execCommand('copy');
     document.body.removeChild(ta);
     const original = btn.textContent;
-    btn.textContent = '✅ Copié !';
+    btn.textContent = t('share.copied');
     setTimeout(() => { btn.textContent = original; }, 2000);
   });
 }
@@ -1255,11 +1282,11 @@ function preparePrint() {
   const dur = totalDurationDisplay ? totalDurationDisplay.textContent : '00:00';
 
   header.innerHTML = `
-        <h2>${showNameInp.value || 'Conducteur'}</h2>
+        <h2>${showNameInp.value || t('print.default')}</h2>
         <p>
-            <strong>Début :</strong> ${startInp.value} &nbsp;|&nbsp; 
-            <strong>Fin :</strong> ${end} &nbsp;|&nbsp; 
-            <strong>Durée :</strong> ${dur}
+            <strong>${t('print.start')}</strong> ${startInp.value} &nbsp;|&nbsp;
+            <strong>${t('print.end')}</strong> ${end} &nbsp;|&nbsp;
+            <strong>${t('print.duration')}</strong> ${dur}
         </p>
     `;
   document.body.prepend(header);
@@ -1303,12 +1330,12 @@ function cleanupPrint() {
 
 function exportToODS() {
   if (!items || items.length === 0) {
-    alert("Aucune donnée à exporter.");
+    alert(t('alert.noData'));
     return;
   }
 
   const data = [
-    ["Heure", "Durée", "Type", "Titre", "Description"]
+    [t('ods.time'), t('ods.duration'), t('ods.type'), t('ods.title'), t('ods.description')]
   ];
 
   let currentTime = parseTime(startInp.value || '00:00');
@@ -1341,13 +1368,21 @@ function exportToODS() {
   ];
   ws['!cols'] = wscols;
 
-  XLSX.utils.book_append_sheet(wb, ws, "Conducteur");
+  XLSX.utils.book_append_sheet(wb, ws, t('ods.sheetName'));
 
-  const showName = showNameInp.value.trim() || "Conducteur";
+  const showName = showNameInp.value.trim() || t('ods.defaultName');
   const filename = `${showName} - RadioTools.be.ods`;
 
   XLSX.writeFile(wb, filename);
 }
+
+// Called by i18n.js after every language change to re-apply dynamic UI strings
+window.onLangChange = function () {
+  render();          // Re-builds blocks (duration label, placeholders, button titles)
+  updateTitle();     // Updates browser tab title
+  // Re-apply connection status tooltip in new language
+  if (Network.currentStatus) Network.updateStatus(Network.currentStatus);
+};
 
 // Start
 init();
