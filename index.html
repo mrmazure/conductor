@@ -21,6 +21,8 @@
     <script src="locales/es.js"></script>
     <!-- i18n system -->
     <script src="js/i18n.js"></script>
+    <!-- Emoji Picker Element -->
+    <script type="module" src="https://cdn.jsdelivr.net/npm/emoji-picker-element@1/index.js"></script>
 </head>
 
 <body>
@@ -78,45 +80,33 @@
         </div>
         <div class="controls">
             <!-- Clear Actions -->
-            <button class="btn btn-secondary" id="btnClearDescriptions"
-                data-i18n="btn.clearDesc"
+            <button class="btn btn-secondary" id="btnClearDescriptions" data-i18n="btn.clearDesc"
                 data-i18n-title="btn.clearDesc.title">
                 🧹 Clear Desc.
             </button>
-            <button class="btn btn-danger" id="btnClear"
-                data-i18n="btn.clearAll"
-                data-i18n-title="btn.clearAll.title">
+            <button class="btn btn-danger" id="btnClear" data-i18n="btn.clearAll" data-i18n-title="btn.clearAll.title">
                 🗑️ Clear all
             </button>
 
             <div class="separator" style="width: 1px; height: 24px; background: #3f3f46; margin: 0 4px;"></div>
 
             <!-- Individual Action Buttons -->
-            <button class="btn btn-secondary" id="btnSaveJson"
-                data-i18n="btn.save"
-                data-i18n-title="btn.save.title">
+            <button class="btn btn-secondary" id="btnSaveJson" data-i18n="btn.save" data-i18n-title="btn.save.title">
                 💾 Save
             </button>
-            <button class="btn btn-secondary" id="btnLoadJson"
-                data-i18n="btn.load"
-                data-i18n-title="btn.load.title">
+            <button class="btn btn-secondary" id="btnLoadJson" data-i18n="btn.load" data-i18n-title="btn.load.title">
                 📂 Open
             </button>
-            <button class="btn btn-secondary" id="btnExportODS"
-                data-i18n="btn.excel"
-                data-i18n-title="btn.excel.title">
+            <button class="btn btn-secondary" id="btnExportODS" data-i18n="btn.excel" data-i18n-title="btn.excel.title">
                 📤 Excel
             </button>
-            <button class="btn btn-primary" id="btnPrint"
-                data-i18n="btn.print"
-                data-i18n-title="btn.print.title">
+            <button class="btn btn-primary" id="btnPrint" data-i18n="btn.print" data-i18n-title="btn.print.title">
                 🖨️ Print / PDF
             </button>
 
             <div class="separator" style="width: 1px; height: 24px; background: #3f3f46; margin: 0 4px;"></div>
 
-            <button class="btn btn-primary" id="btnOpenShareModal"
-                data-i18n="btn.share"
+            <button class="btn btn-primary" id="btnOpenShareModal" data-i18n="btn.share"
                 data-i18n-title="btn.share.title">
                 🔗 Share / Collaborate
             </button>
@@ -163,6 +153,19 @@
                 <label data-i18n="modal.type.labelName">Block name</label>
                 <input type="text" id="newTypeName" placeholder="Ex: Interview">
             </div>
+            <div class="form-group" style="position: relative;">
+                <label data-i18n="modal.type.labelIcon">Icon (Emoji)</label>
+                <div>
+                    <button type="button" id="btnTypeIcon" class="btn btn-secondary"
+                        style="font-size: 1.5rem; width: 44px; height: 44px; padding: 0; display: flex; align-items: center; justify-content: center;">💬</button>
+                    <!-- Hidden input to store standard value -->
+                    <input type="hidden" id="newTypeIcon" value="💬">
+                </div>
+                <div id="emojiPickerWrapper" class="hidden"
+                    style="position: absolute; left: 0; top: 100%; margin-top: 8px; z-index: 2000; box-shadow: var(--shadow-md);">
+                    <emoji-picker class="dark"></emoji-picker>
+                </div>
+            </div>
             <div class="form-group">
                 <label data-i18n="modal.type.labelColor">Color</label>
                 <input type="color" id="newTypeColor" value="#3b82f6">
@@ -195,15 +198,19 @@
                     <span class="share-icon">☁️</span>
                     <div>
                         <strong data-i18n="share.cloud.title">Encrypted Cloud Backup</strong>
-                        <p data-i18n="share.cloud.desc">Generates a unique link to share the rundown. Data is encrypted; the server cannot read it.</p>
+                        <p data-i18n="share.cloud.desc">Generates a unique link to share the rundown. Data is encrypted;
+                            the server cannot read it.</p>
                     </div>
                 </div>
-                <button class="btn btn-secondary" id="btnGenerateCloudLink" data-i18n="share.cloud.btn">☁️ Generate share link</button>
+                <button class="btn btn-secondary" id="btnGenerateCloudLink" data-i18n="share.cloud.btn">☁️ Generate
+                    share link</button>
                 <div id="cloudLinkWrapper" class="link-wrapper hidden">
                     <input type="text" id="cloudLinkInput" readonly data-i18n-placeholder="share.cloud.placeholder">
-                    <button class="btn btn-secondary btn-copy" id="btnCopyCloudLink" data-i18n-title="share.cloud.copy.title" data-i18n="share.copy">📋 Copy</button>
+                    <button class="btn btn-secondary btn-copy" id="btnCopyCloudLink"
+                        data-i18n-title="share.cloud.copy.title" data-i18n="share.copy">📋 Copy</button>
                 </div>
-                <p id="cloudNotice" class="share-notice hidden" data-i18n="share.cloud.notice">🔒 End-to-end encrypted. Link valid for 30 days. Changes are synced automatically.</p>
+                <p id="cloudNotice" class="share-notice hidden" data-i18n="share.cloud.notice">🔒 End-to-end encrypted.
+                    Link valid for 30 days. Changes are synced automatically.</p>
             </div>
 
 
@@ -218,10 +225,12 @@
                         <p data-i18n="share.live.desc">Work in real time with your collaborators.</p>
                     </div>
                 </div>
-                <button class="btn btn-primary" id="btnStartLive" data-i18n="share.live.btn">🤝 Start Live session</button>
+                <button class="btn btn-primary" id="btnStartLive" data-i18n="share.live.btn">🤝 Start Live
+                    session</button>
                 <div id="liveLinkWrapper" class="link-wrapper hidden">
                     <input type="text" id="liveLinkInput" readonly data-i18n-placeholder="share.live.placeholder">
-                    <button class="btn btn-secondary btn-copy" id="btnCopyLiveLink" data-i18n-title="share.live.copy.title" data-i18n="share.copy">📋 Copy</button>
+                    <button class="btn btn-secondary btn-copy" id="btnCopyLiveLink"
+                        data-i18n-title="share.live.copy.title" data-i18n="share.copy">📋 Copy</button>
                 </div>
             </div>
         </div>

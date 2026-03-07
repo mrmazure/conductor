@@ -20,8 +20,12 @@ const connectionStatus = document.getElementById('connection-status'); // NEW
 // Modal Elements
 const modal = document.getElementById('typeModal');
 const inpName = document.getElementById('newTypeName');
+const inpIcon = document.getElementById('newTypeIcon');
 const inpColor = document.getElementById('newTypeColor');
 const inpDuration = document.getElementById('newTypeDuration');
+const btnTypeIcon = document.getElementById('btnTypeIcon');
+const emojiPickerWrapper = document.getElementById('emojiPickerWrapper');
+const emojiPicker = document.querySelector('emoji-picker');
 const btnCancel = document.getElementById('typeCancel');
 const btnConfirm = document.getElementById('typeConfirm');
 const btnDeleteType = document.getElementById('typeDelete');
@@ -33,11 +37,11 @@ let currentEncKey = null; // CryptoKey AES-GCM active (jamais envoyée au serveu
 
 function getDefaultTypes() {
   return {
-    sequence: { label: t('default.types.sequence'), i18nKey: 'default.types.sequence', color: '#3b82f6', duration: 60 },
-    speak:    { label: t('default.types.speak'),    i18nKey: 'default.types.speak',    color: '#f59e0b', duration: 60 },
-    pub:      { label: t('default.types.pub'),      i18nKey: 'default.types.pub',      color: '#10b981', duration: 60 },
-    musique:  { label: t('default.types.musique'),  i18nKey: 'default.types.musique',  color: '#8b5cf6', duration: 180 },
-    autre:    { label: t('default.types.autre'),    i18nKey: 'default.types.autre',    color: '#ef4444', duration: 60 }
+    sequence: { label: t('default.types.sequence'), i18nKey: 'default.types.sequence', color: '#3b82f6', duration: 60, icon: '🎵' },
+    speak: { label: t('default.types.speak'), i18nKey: 'default.types.speak', color: '#f59e0b', duration: 60, icon: '🎤' },
+    pub: { label: t('default.types.pub'), i18nKey: 'default.types.pub', color: '#10b981', duration: 60, icon: '💰' },
+    musique: { label: t('default.types.musique'), i18nKey: 'default.types.musique', color: '#8b5cf6', duration: 180, icon: '💿' },
+    autre: { label: t('default.types.autre'), i18nKey: 'default.types.autre', color: '#ef4444', duration: 60, icon: '📝' }
   };
 }
 
@@ -453,6 +457,29 @@ function setupEventListeners() {
   btnConfirm.addEventListener('click', confirmTypeEdit);
   btnDeleteType.addEventListener('click', deleteType);
 
+  // Emoji Picker logic
+  if (btnTypeIcon && emojiPickerWrapper) {
+    btnTypeIcon.addEventListener('click', () => {
+      emojiPickerWrapper.classList.toggle('hidden');
+    });
+
+    if (emojiPicker) {
+      emojiPicker.addEventListener('emoji-click', event => {
+        const emoji = event.detail.unicode;
+        btnTypeIcon.textContent = emoji;
+        inpIcon.value = emoji;
+        emojiPickerWrapper.classList.add('hidden');
+      });
+    }
+
+    // Close picker when clicking outside
+    document.addEventListener('click', (e) => {
+      if (!btnTypeIcon.contains(e.target) && !emojiPickerWrapper.contains(e.target)) {
+        emojiPickerWrapper.classList.add('hidden');
+      }
+    });
+  }
+
   // Global Actions
   document.getElementById('btnClear').addEventListener('click', clearAll);
   if (btnClearDescriptions) {
@@ -650,6 +677,7 @@ function createBlockElement(it, index, startTimeSeconds) {
 
   const timeStr = formatTime(startTimeSeconds);
   const typeLabel = types[it.type]?.label || it.type;
+  const typeIcon = types[it.type]?.icon || '';
 
   el.innerHTML += `
         <div class="drag-handle" draggable="true" title="${t('block.move.title')}">☰</div>
@@ -659,7 +687,10 @@ function createBlockElement(it, index, startTimeSeconds) {
             <input type="text" class="duration-input" value="${formatDuration(it.dur)}" ${lock ? 'disabled' : ''}>
         </div>
         <div class="content">
-            <div class="title" contenteditable="${!lock}" spellcheck="false">${it.title}</div>
+            <div class="title-wrapper" style="display: flex; align-items: center; gap: 6px;">
+                ${typeIcon ? `<span class="block-icon" style="font-size: 1.1rem; flex-shrink: 0;" contenteditable="false">${typeIcon}</span>` : ''}
+                <div class="title" style="flex: 1;" contenteditable="${!lock}" spellcheck="false">${it.title}</div>
+            </div>
             <textarea class="description-input" rows="1" placeholder="${t('block.descPlaceholder')}" ${lock ? 'disabled' : ''}>${it.desc || ''}</textarea>
         </div>
         <div class="item-actions">
@@ -921,6 +952,18 @@ function loadTypes() {
           );
           if (isDefaultLabel) parsed[k].i18nKey = defaultI18nKey;
         }
+
+        // Migration: ensure default icons exist if they were missing
+        const defaultIconMap = {
+          sequence: '🎵',
+          speak: '🎤',
+          pub: '💰',
+          musique: '💿',
+          autre: '📝'
+        };
+        if (defaultIconMap[k] && parsed[k].icon === undefined) {
+          parsed[k].icon = defaultIconMap[k];
+        }
       });
       Object.assign(types, parsed);
     }
@@ -940,7 +983,10 @@ function updatePalette() {
     const div = document.createElement('div');
     div.className = `block ${key}`;
     div.draggable = true;
-    div.textContent = types[key].i18nKey ? t(types[key].i18nKey) : types[key].label;
+
+    const iconSpan = types[key].icon ? `<span class="block-icon" style="margin-right: 4px;">${types[key].icon}</span>` : '';
+    div.innerHTML = iconSpan + (types[key].i18nKey ? t(types[key].i18nKey) : types[key].label);
+
     div.dataset.type = key;
     div.style.borderLeftColor = types[key].color;
     div.addEventListener('dragstart', handlePaletteDragStart);
@@ -969,11 +1015,16 @@ function openModal(editKey = null) {
 
   if (editKey && types[editKey]) {
     inpName.value = types[editKey].i18nKey ? t(types[editKey].i18nKey) : types[editKey].label;
+    const iconValue = types[editKey].icon || '📝';
+    inpIcon.value = iconValue;
+    btnTypeIcon.textContent = iconValue;
     inpColor.value = types[editKey].color;
     inpDuration.value = formatDuration(types[editKey].duration || 60);
     btnDeleteType.classList.remove('hidden');
   } else {
     inpName.value = '';
+    inpIcon.value = '📝';
+    btnTypeIcon.textContent = '📝';
     inpColor.value = '#ffffff';
     inpDuration.value = '01:00';
     btnDeleteType.classList.add('hidden');
@@ -983,11 +1034,13 @@ function openModal(editKey = null) {
 
 function closeModal() {
   modal.classList.add('hidden');
+  if (emojiPickerWrapper) emojiPickerWrapper.classList.add('hidden');
 }
 
 function confirmTypeEdit() {
   const name = inpName.value.trim();
   if (!name) return;
+  const icon = inpIcon.value.trim();
   const color = inpColor.value;
   const durStr = inpDuration.value;
   const duration = parseDuration(durStr) || 60;
@@ -995,6 +1048,7 @@ function confirmTypeEdit() {
 
   if (key && types[key]) {
     types[key].label = name;
+    types[key].icon = icon;
     types[key].color = color;
     types[key].duration = duration;
     // If the user changed the name away from the default, drop the i18n key
@@ -1004,7 +1058,7 @@ function confirmTypeEdit() {
     }
   } else {
     const newKey = name.toLowerCase().replace(/[^a-z0-9]/g, '-') + '-' + Date.now().toString().slice(-4);
-    types[newKey] = { label: name, color, duration };
+    types[newKey] = { label: name, icon, color, duration };
   }
 
   saveTypes();
@@ -1358,11 +1412,13 @@ function exportToODS() {
     const timeStr = formatTime(currentTime);
     const durationStr = formatDuration(it.dur);
     const typeLabel = types[it.type]?.label || it.type;
+    const typeIcon = types[it.type]?.icon || '';
+    const fullTypeLabel = typeIcon ? `${typeIcon} ${typeLabel}` : typeLabel;
 
     data.push([
       timeStr,
       durationStr,
-      typeLabel,
+      fullTypeLabel,
       it.title,
       it.desc || ''
     ]);

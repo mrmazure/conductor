@@ -38,6 +38,7 @@ window.LOCALES['en'] = {
 
     // Type Modal
     'modal.type.title': 'Manage Type',
+    'modal.type.labelIcon': 'Icon (Emoji)',
     'modal.type.labelName': 'Block name',
     'modal.type.labelColor': 'Color',
     'modal.type.labelDuration': 'Default duration (mm:ss)',
