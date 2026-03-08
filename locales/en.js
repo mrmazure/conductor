@@ -42,6 +42,7 @@ window.LOCALES['en'] = {
     'modal.type.labelName': 'Block name',
     'modal.type.labelColor': 'Color',
     'modal.type.labelDuration': 'Default duration (mm:ss)',
+    'modal.type.estimateDuration': 'Estimate duration from word count (155 wpm)',
     'modal.type.delete': 'Delete',
     'modal.type.cancel': 'Cancel',
     'modal.type.confirm': 'Save',

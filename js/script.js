@@ -23,6 +23,7 @@ const inpName = document.getElementById('newTypeName');
 const inpIcon = document.getElementById('newTypeIcon');
 const inpColor = document.getElementById('newTypeColor');
 const inpDuration = document.getElementById('newTypeDuration');
+const inpEstimateDuration = document.getElementById('newTypeEstimateDuration');
 const btnTypeIcon = document.getElementById('btnTypeIcon');
 const emojiPickerWrapper = document.getElementById('emojiPickerWrapper');
 const emojiPicker = document.querySelector('emoji-picker');
@@ -782,6 +783,13 @@ function createBlockElement(it, index, startTimeSeconds) {
 
     descInput.addEventListener('change', () => {
       it.desc = descInput.value;
+      if (types[it.type]?.estimateDuration) {
+        const words = it.desc.trim() ? it.desc.trim().split(/\s+/).length : 0;
+        if (words > 0) {
+          it.dur = Math.max(1, Math.round(words / 155 * 60));
+        }
+        render();
+      }
       saveState();
       Network.send({ type: 'UPDATE_ITEM', item: it });
     });
@@ -1020,6 +1028,7 @@ function openModal(editKey = null) {
     btnTypeIcon.textContent = iconValue;
     inpColor.value = types[editKey].color;
     inpDuration.value = formatDuration(types[editKey].duration || 60);
+    inpEstimateDuration.checked = !!types[editKey].estimateDuration;
     btnDeleteType.classList.remove('hidden');
   } else {
     inpName.value = '';
@@ -1027,6 +1036,7 @@ function openModal(editKey = null) {
     btnTypeIcon.textContent = '📝';
     inpColor.value = '#ffffff';
     inpDuration.value = '01:00';
+    inpEstimateDuration.checked = false;
     btnDeleteType.classList.add('hidden');
   }
   inpName.focus();
@@ -1044,21 +1054,35 @@ function confirmTypeEdit() {
   const color = inpColor.value;
   const durStr = inpDuration.value;
   const duration = parseDuration(durStr) || 60;
+  const estimateDuration = inpEstimateDuration.checked;
   const key = modal.dataset.key;
 
   if (key && types[key]) {
+    const wasEstimating = !!types[key].estimateDuration;
     types[key].label = name;
     types[key].icon = icon;
     types[key].color = color;
     types[key].duration = duration;
+    types[key].estimateDuration = estimateDuration;
     // If the user changed the name away from the default, drop the i18n key
     // so the custom name is displayed instead of the auto-translated one.
     if (types[key].i18nKey && name !== t(types[key].i18nKey)) {
       delete types[key].i18nKey;
     }
+    // Recalculate duration for existing blocks of this type when option is newly enabled
+    if (!wasEstimating && estimateDuration) {
+      items.forEach(it => {
+        if (it.type === key) {
+          const words = it.desc && it.desc.trim() ? it.desc.trim().split(/\s+/).length : 0;
+          if (words > 0) {
+            it.dur = Math.max(1, Math.round(words / 155 * 60));
+          }
+        }
+      });
+    }
   } else {
     const newKey = name.toLowerCase().replace(/[^a-z0-9]/g, '-') + '-' + Date.now().toString().slice(-4);
-    types[newKey] = { label: name, icon, color, duration };
+    types[newKey] = { label: name, icon, color, duration, estimateDuration };
   }
 
   saveTypes();
@@ -1066,6 +1090,14 @@ function confirmTypeEdit() {
   render();
   closeModal();
   Network.send({ type: 'UPDATE_TYPES', types: types });
+  // Sync recalculated items to peers (only items whose duration was recalculated)
+  if (key && types[key] && types[key].estimateDuration) {
+    items.forEach(it => {
+      if (it.type === key) {
+        Network.send({ type: 'UPDATE_ITEM', item: it });
+      }
+    });
+  }
 }
 
 function deleteType() {

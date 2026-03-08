@@ -42,6 +42,7 @@ window.LOCALES['fr'] = {
   'modal.type.labelName': 'Nom du bloc',
   'modal.type.labelColor': 'Couleur',
   'modal.type.labelDuration': 'Durée par défaut (mm:ss)',
+  'modal.type.estimateDuration': 'Estimer la durée selon le nombre de mots (155 mots/min)',
   'modal.type.delete': 'Supprimer',
   'modal.type.cancel': 'Annuler',
   'modal.type.confirm': 'Enregistrer',
