@@ -35,6 +35,7 @@ const btnDeleteType = document.getElementById('typeDelete');
 let items = [];
 let currentShareId = null; // ID du partage cloud actif
 let currentEncKey = null; // CryptoKey AES-GCM active (jamais envoyée au serveur)
+let expandAllDesc = false; // Keep all descriptions expanded permanently
 
 function getDefaultTypes() {
   return {
@@ -598,6 +599,32 @@ function setupEventListeners() {
     Network.disconnect();
   });
 
+  // Menu Dropdown (Save, Load, Excel, Print)
+  const btnMenu = document.getElementById('btnMenu');
+  const menuPanel = document.getElementById('menuPanel');
+  if (btnMenu && menuPanel) {
+    btnMenu.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const isOpen = !menuPanel.classList.contains('hidden');
+      menuPanel.classList.toggle('hidden');
+      btnMenu.setAttribute('aria-expanded', String(!isOpen));
+    });
+    // Close when clicking a menu item
+    menuPanel.addEventListener('click', (e) => {
+      if (e.target.tagName === 'BUTTON') {
+        menuPanel.classList.add('hidden');
+        btnMenu.setAttribute('aria-expanded', 'false');
+      }
+    });
+    // Close when clicking outside
+    document.addEventListener('click', (e) => {
+      if (!btnMenu.contains(e.target) && !menuPanel.contains(e.target)) {
+        menuPanel.classList.add('hidden');
+        btnMenu.setAttribute('aria-expanded', 'false');
+      }
+    });
+  }
+
   // JSON I/O
   document.getElementById('btnSaveJson').addEventListener('click', saveJson);
   document.getElementById('btnLoadJson').addEventListener('click', () => document.getElementById('fileInputJson').click());
@@ -612,6 +639,26 @@ function setupEventListeners() {
   // Print Events
   window.addEventListener('beforeprint', preparePrint);
   window.addEventListener('afterprint', cleanupPrint);
+
+  // Expand all descriptions toggle
+  const expandDescWrap = document.getElementById('expandDescWrap');
+  const toggleExpandDesc = document.getElementById('toggleExpandDesc');
+  if (expandDescWrap && toggleExpandDesc) {
+    expandDescWrap.addEventListener('click', () => {
+      expandAllDesc = !expandAllDesc;
+      toggleExpandDesc.classList.toggle('active', expandAllDesc);
+      if (expandAllDesc) {
+        refreshDescExpansion();
+      } else {
+        document.querySelectorAll('.description-input').forEach(el => {
+          if (document.activeElement !== el) {
+            el.style.height = '2.4em';
+            el.scrollTop = 0;
+          }
+        });
+      }
+    });
+  }
 }
 
 // --- Logic ---
@@ -643,9 +690,18 @@ function render() {
 
   // Update Stats
   updateStats(currentTime, totalSeconds);
+  if (expandAllDesc) refreshDescExpansion();
   saveState();
   updateTitle();
   syncToServer();
+}
+
+function refreshDescExpansion() {
+  document.querySelectorAll('.description-input').forEach(el => {
+    el.style.height = 'auto';
+    el.style.height = (el.scrollHeight + 5) + 'px';
+    el.style.overflow = 'hidden';
+  });
 }
 
 
@@ -681,7 +737,7 @@ function createBlockElement(it, index, startTimeSeconds) {
   const typeIcon = types[it.type]?.icon || '';
 
   el.innerHTML += `
-        <div class="drag-handle" draggable="true" title="${t('block.move.title')}">☰</div>
+        <div class="drag-handle" draggable="${lock ? 'false' : 'true'}" title="${t('block.move.title')}">☰</div>
         <div class="time-display">${timeStr}</div>
         <div class="duration-container">
             <span class="label-duration">${t('block.duration')}</span>
@@ -777,7 +833,7 @@ function createBlockElement(it, index, startTimeSeconds) {
     });
     descInput.addEventListener('input', expand);
     descInput.addEventListener('blur', () => {
-      shrink();
+      if (!expandAllDesc) shrink();
       Network.send({ type: 'UNLOCK_BLOCK', blockId: it.id });
     });
 

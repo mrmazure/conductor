@@ -1031,6 +1031,117 @@ h1 {
   line-height: 1.4;
 }
 
+/* ─── Toggle switch (iOS-style) ─────────────────────── */
+.toggle-switch-wrap {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  user-select: none;
+  flex-shrink: 0;
+}
+
+.toggle-track {
+  width: 34px;
+  height: 18px;
+  border-radius: 9px;
+  background: var(--bg-input);
+  border: 1px solid var(--border);
+  position: relative;
+  transition: background 0.2s, border-color 0.2s;
+  flex-shrink: 0;
+}
+
+.toggle-track.active {
+  background: var(--primary);
+  border-color: var(--primary);
+}
+
+.toggle-thumb {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: #fff;
+  transition: left 0.2s ease;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+}
+
+.toggle-track.active .toggle-thumb {
+  left: 18px;
+}
+
+.toggle-text {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  font-weight: 500;
+  transition: color 0.15s;
+}
+
+.toggle-switch-wrap:hover .toggle-text {
+  color: var(--text-main);
+}
+
+/* ─── Menu Dropdown (Save/Load/Excel/Print) ─────────── */
+.menu-dropdown {
+  position: relative;
+  flex-shrink: 0;
+}
+
+.menu-toggle {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.menu-chevron {
+  display: flex;
+  align-items: center;
+  opacity: 0.8;
+  transition: transform 0.2s ease;
+}
+
+.menu-toggle[aria-expanded="true"] .menu-chevron {
+  transform: rotate(-180deg);
+}
+
+.menu-panel {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 4px;
+  z-index: 500;
+  min-width: 160px;
+  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.45);
+  animation: langMenuIn 0.15s ease;
+}
+
+.menu-panel button {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  background: none;
+  border: none;
+  color: var(--text-main);
+  padding: 8px 12px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 0.875rem;
+  font-family: inherit;
+  text-align: left;
+  transition: background 0.12s;
+}
+
+.menu-panel button:hover {
+  background: var(--bg-input);
+}
+
 /* ─── Language Dropdown ─────────────────────────────── */
 .lang-dropdown {
   position: relative;

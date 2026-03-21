@@ -79,6 +79,14 @@
             </div>
         </div>
         <div class="controls">
+            <!-- Expand descriptions toggle - left of Clear Desc -->
+            <label class="toggle-switch-wrap" id="expandDescWrap" data-i18n-title="btn.expandDesc.title">
+                <span class="toggle-track" id="toggleExpandDesc">
+                    <span class="toggle-thumb"></span>
+                </span>
+                <span class="toggle-text" data-i18n="btn.expandDesc">Expand desc.</span>
+            </label>
+
             <!-- Clear Actions -->
             <button class="btn btn-secondary" id="btnClearDescriptions" data-i18n="btn.clearDesc"
                 data-i18n-title="btn.clearDesc.title">
@@ -90,19 +98,18 @@
 
             <div class="separator" style="width: 1px; height: 24px; background: #3f3f46; margin: 0 4px;"></div>
 
-            <!-- Individual Action Buttons -->
-            <button class="btn btn-secondary" id="btnSaveJson" data-i18n="btn.save" data-i18n-title="btn.save.title">
-                💾 Save
-            </button>
-            <button class="btn btn-secondary" id="btnLoadJson" data-i18n="btn.load" data-i18n-title="btn.load.title">
-                📂 Open
-            </button>
-            <button class="btn btn-secondary" id="btnExportODS" data-i18n="btn.excel" data-i18n-title="btn.excel.title">
-                📤 Excel
-            </button>
-            <button class="btn btn-primary" id="btnPrint" data-i18n="btn.print" data-i18n-title="btn.print.title">
-                🖨️ Print / PDF
-            </button>
+            <!-- Menu Dropdown (Save, Load, Excel, Print) -->
+            <div class="menu-dropdown" id="menuDropdown">
+                <button class="btn btn-secondary menu-toggle" id="btnMenu" data-i18n-title="btn.menu.title">
+                    <span class="menu-chevron"><svg viewBox="0 0 24 24" width="15" height="15" stroke="currentColor" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg></span> <span data-i18n="btn.menu">Menu</span>
+                </button>
+                <div class="menu-panel hidden" id="menuPanel">
+                    <button id="btnSaveJson" data-i18n="btn.save" data-i18n-title="btn.save.title">💾 Save</button>
+                    <button id="btnLoadJson" data-i18n="btn.load" data-i18n-title="btn.load.title">📂 Open</button>
+                    <button id="btnExportODS" data-i18n="btn.excel" data-i18n-title="btn.excel.title">📤 Excel</button>
+                    <button id="btnPrint" data-i18n="btn.print" data-i18n-title="btn.print.title">🖨️ Print / PDF</button>
+                </div>
+            </div>
 
             <div class="separator" style="width: 1px; height: 24px; background: #3f3f46; margin: 0 4px;"></div>
 
